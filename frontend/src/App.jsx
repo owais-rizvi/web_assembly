@@ -9,16 +9,24 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const loadWasm = async () => {
-      try {
-        if (typeof window !== "undefined" && window.ExcelProcessor) {
-          const module = await window.ExcelProcessor();
-          setWasmModule(module);
-        }
-      } catch (error) {
-        console.error("Failed to load WASM module:", error);
-      }
-    };
+    // INSIDE useEffect...
+
+const loadWasm = async () => {
+  try {
+    // CHANGE THIS LINE: check for 'createModule' instead of 'ExcelProcessor'
+    if (typeof window !== "undefined" && window.createModule) {
+      
+      // CHANGE THIS LINE: call 'createModule()'
+      const module = await window.createModule();
+      setWasmModule(module);
+      console.log("✅ WASM Module Loaded Successfully");
+    } else {
+        console.error("❌ window.createModule is not defined. Check your script loading.");
+    }
+  } catch (error) {
+    console.error("Failed to load WASM module:", error);
+  }
+};
 
     // Load WASM script
     const script = document.createElement("script");
@@ -114,19 +122,21 @@ function App() {
       const cleanData = [];
       const riskSummary = [];
 
-      for (let i = 0; i < result.cleanData.size(); i++) {
+      // FIX: Use .length and [i] instead of .size() and .get(i)
+      for (let i = 0; i < result.cleanData.length; i++) {
         cleanData.push({
-          Transaction_ID: result.cleanData.get(i).Transaction_ID,
-          Customer_ID: result.cleanData.get(i).Customer_ID,
-          Amount: result.cleanData.get(i).Amount,
-          Risk_Level: result.cleanData.get(i).Risk_Level,
+          Transaction_ID: result.cleanData[i].Transaction_ID,
+          Customer_ID: result.cleanData[i].Customer_ID,
+          Amount: result.cleanData[i].Amount,
+          Risk_Level: result.cleanData[i].Risk_Level,
         });
       }
 
-      for (let i = 0; i < result.riskSummary.size(); i++) {
+      // FIX: Use .length and [i]
+      for (let i = 0; i < result.riskSummary.length; i++) {
         riskSummary.push({
-          Risk_Type: result.riskSummary.get(i).Risk_Type,
-          Count: result.riskSummary.get(i).Count,
+          Risk_Type: result.riskSummary[i].Risk_Type,
+          Count: result.riskSummary[i].Count,
         });
       }
 
@@ -159,19 +169,21 @@ function App() {
       const violations = [];
       const summary = [];
 
-      for (let i = 0; i < result.violations.size(); i++) {
+      // FIX: Use .length and [i]
+      for (let i = 0; i < result.violations.length; i++) {
         violations.push({
-          User_ID: result.violations.get(i).User_ID,
-          Role: result.violations.get(i).Role,
-          Access_Type: result.violations.get(i).Access_Type,
-          Status: result.violations.get(i).Status,
+          User_ID: result.violations[i].User_ID,
+          Role: result.violations[i].Role,
+          Access_Type: result.violations[i].Access_Type,
+          Status: result.violations[i].Status,
         });
       }
 
-      for (let i = 0; i < result.summary.size(); i++) {
+      // FIX: Use .length and [i]
+      for (let i = 0; i < result.summary.length; i++) {
         summary.push({
-          Status: result.summary.get(i).Status,
-          Count: result.summary.get(i).Count,
+          Status: result.summary[i].Status,
+          Count: result.summary[i].Count,
         });
       }
 
