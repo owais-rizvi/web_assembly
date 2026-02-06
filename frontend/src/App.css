@@ -1,76 +1,248 @@
-.app {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* --- RESET & LAYOUT --- */
+:root {
+  color-scheme: light; /* 🔒 FORCES LIGHT MODE RENDERING */
 }
 
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #fafafa !important; /* Force Light Gray Background */
+  color: #111111 !important; /* Force Dark Text */
+  overflow: hidden; /* 🛑 STOPS SCROLLING */
+}
+
+.app {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+/* --- DOT BACKGROUND --- */
+.dot-matrix {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+  gap: 20px;
+  padding: 20px;
+  opacity: 0.03;
+  pointer-events: none;
+}
+.dot { width: 4px; height: 4px; fill: #000000; } /* Force Black Dots */
+
+/* --- HEADER --- */
+.header { margin-bottom: 2.5rem; text-align: center; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0.8rem;
+}
+.badge span { 
+  font-size: 0.85rem; 
+  text-transform: uppercase; 
+  letter-spacing: 2px; 
+  color: #888888; /* Explicit Gray */
+  font-weight: 700; 
+}
+.badge-dot { width: 8px; height: 8px; background-color: #2563eb; border-radius: 50%; }
+
+h1 {
+  font-size: 4rem;
+  line-height: 1;
+  font-weight: 300;
+  color: #111111; /* Explicit Black */
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -2px;
+}
+
+.subtitle { color: #666666; font-size: 1.1rem; font-weight: 300; }
+
+/* --- BUTTONS ROW --- */
 .buttons {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: center;
+  align-items: stretch;
   gap: 2rem;
-  margin: 2rem 0;
+  width: 100%;
+  max-width: 1300px;
+  height: auto;
 }
 
+/* --- CARD DESIGN --- */
 .button-section {
-  border: 2px solid #ccc;
-  border-radius: 8px;
-  padding: 1.5rem;
-  background: #f9f9f9;
-}
-
-.button-section h2 {
-  margin-bottom: 1rem;
-  color: #333;
-}
-
-.file-inputs {
+  flex: 1;
+  min-width: 300px;
+  max-width: 380px;
+  background-color: #ffffff !important; /* Force White Card */
+  padding: 2rem;
+  border-radius: 20px;
+  border: 1px solid #e5e5e5;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin: 1rem 0;
   align-items: center;
+  text-align: center;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
 }
 
-.file-inputs input {
-  margin: 0.25rem;
+.button-section:hover {
+  transform: translateY(-8px);
+  z-index: 10;
+  border-color: transparent;
+}
+
+/* Icons */
+.icon-wrapper {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+  background-color: #f8f8f8; /* Explicit Light Gray */
+}
+.icon { width: 28px; height: 28px; color: #555555; transition: color 0.3s ease; }
+
+h2 { font-size: 1.4rem; margin: 0 0 0.8rem 0; font-weight: 700; color: #1a1a1a; }
+
+.description {
+  font-size: 0.95rem;
+  color: #555555; /* Explicit Gray */
+  line-height: 1.5;
+  margin-bottom: 2rem;
+  min-height: 3rem;
+}
+
+/* --- THEMES (Card & Borders Only) --- */
+
+/* 1. Payroll (Blue) */
+.payroll-card:hover { box-shadow: 0 25px 50px -12px rgba(37, 99, 235, 0.25); }
+.payroll-card:hover .icon-wrapper { background-color: #eff6ff; }
+.payroll-card:hover .icon { color: #2563eb; }
+.payroll-card .file-inputs label.active { background-color: #eff6ff; border-color: #2563eb; color: #1e40af; border-style: solid; }
+
+/* 2. Risk (Purple) */
+.risk-card:hover { box-shadow: 0 25px 50px -12px rgba(147, 51, 234, 0.25); }
+.risk-card:hover .icon-wrapper { background-color: #faf5ff; }
+.risk-card:hover .icon { color: #9333ea; }
+.risk-card .file-inputs label.active { background-color: #faf5ff; border-color: #9333ea; color: #6b21a8; border-style: solid; }
+
+/* 3. Compliance (Green) */
+.compliance-card:hover { box-shadow: 0 25px 50px -12px rgba(22, 163, 74, 0.25); }
+.compliance-card:hover .icon-wrapper { background-color: #f0fdf4; }
+.compliance-card:hover .icon { color: #16a34a; }
+.compliance-card .file-inputs label.active { background-color: #f0fdf4; border-color: #16a34a; color: #15803d; border-style: solid; }
+
+
+/* --- INPUTS --- */
+.file-inputs { 
+  width: 100%; 
+  margin-top: auto;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .file-inputs label {
-  font-size: 0.9rem;
-  color: #666;
-  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 18px;
+  background-color: #fafafa;
+  border: 2px dashed #e5e5e5;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-sizing: border-box;
 }
 
+.file-inputs label:hover { background-color: #f4f4f5; border-color: #bbb; }
+
+.label-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow: hidden;
+}
+
+.file-count {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: inherit;
+}
+
+.file-sub {
+  font-size: 0.75rem;
+  color: #888888;
+  margin-top: 2px;
+}
+
+.upload-icon { width: 20px; height: 20px; color: #999999; flex-shrink: 0; }
+
+/* Example Text */
+.examples {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 0 6px;
+  text-align: left;
+}
+
+.ex-icon { width: 14px; height: 14px; color: #aaaaaa; margin-top: 3px; flex-shrink: 0; }
+
+.examples span {
+  font-size: 0.75rem;
+  color: #888888;
+  line-height: 1.3;
+}
+
+/* --- BLACK BUTTONS --- */
 button {
-  background: #007acc;
-  color: white;
+  width: 100%;
+  padding: 1.1rem;
+  border-radius: 14px;
   border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 4px;
-  cursor: pointer;
+  font-weight: 700;
   font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  
+  /* 🖤 BLACK BACKGROUND, WHITE TEXT */
+  background-color: #18181b !important; 
+  color: #ffffff !important;
 }
 
 button:hover {
-  background: #005a9e;
+  transform: scale(1.02);
+  background-color: #000000 !important; /* Pure Black on Hover */
+  box-shadow: 0 6px 10px rgba(0,0,0,0.15);
 }
 
-button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
+button:disabled { 
+  background-color: #e5e5e5 !important; 
+  color: #a1a1aa !important; /* Gray Text on Disabled */
+  cursor: not-allowed; 
+  transform: none; 
+  box-shadow: none;
 }
 
-.loading {
-  font-size: 1.2rem;
-  color: #007acc;
-  margin: 1rem 0;
-}
-
-.result {
-  background: #e8f5e8;
-  border: 1px solid #4caf50;
-  border-radius: 4px;
-  padding: 1rem;
-  margin: 1rem 0;
-}
+.hidden { display: none; }

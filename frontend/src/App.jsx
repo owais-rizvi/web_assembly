@@ -1,72 +1,59 @@
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
+import { Calculator, Shield, CheckCircle2, Upload, Circle, FileSpreadsheet } from 'lucide-react';
 import "./App.css";
 
-function App() {
+export default function App() {
   const [wasmModule, setWasmModule] = useState(null);
-  const [files, setFiles] = useState({});
-  const [result, setResult] = useState(null);
+  
+  // File States
+  const [payrollFiles, setPayrollFiles] = useState(null);
+  const [riskFiles, setRiskFiles] = useState(null);
+  const [complianceFiles, setComplianceFiles] = useState(null);
+  
   const [loading, setLoading] = useState(false);
+  const [processing, setProcessing] = useState(null); 
 
   useEffect(() => {
-    // INSIDE useEffect...
-
-const loadWasm = async () => {
-  try {
-    // CHANGE THIS LINE: check for 'createModule' instead of 'ExcelProcessor'
-    if (typeof window !== "undefined" && window.createModule) {
-      
-      // CHANGE THIS LINE: call 'createModule()'
-      const module = await window.createModule();
-      setWasmModule(module);
-      console.log("✅ WASM Module Loaded Successfully");
-    } else {
-        console.error("❌ window.createModule is not defined. Check your script loading.");
-    }
-  } catch (error) {
-    console.error("Failed to load WASM module:", error);
-  }
-};
-
-    // Load WASM script
+    const loadWasm = async () => {
+      if (typeof window !== "undefined" && window.createModule) {
+        const module = await window.createModule();
+        setWasmModule(module);
+        console.log("✅ WASM Module Loaded");
+      }
+    };
     const script = document.createElement("script");
     script.src = "/excel_processor.js";
     script.onload = loadWasm;
     document.head.appendChild(script);
-
-    return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
-    };
+    return () => { if (document.head.contains(script)) document.head.removeChild(script); };
   }, []);
 
-  const handleFileUpload = (event, key) => {
-    const file = event.target.files[0];
-    if (file) {
-      console.log(`Uploading ${key}:`, file.name);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const workbook = XLSX.read(e.target.result, { type: "binary" });
-          const sheetName = workbook.SheetNames[0];
-          const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-          console.log(`${key} data:`, data);
-          setFiles((prev) => ({
-            ...prev,
-            [key]: { data, filename: file.name },
-          }));
-        } catch (error) {
-          console.error(`Error reading ${key}:`, error);
-          alert(`Error reading ${file.name}: ${error.message}`);
-        }
-      };
-      reader.onerror = (error) => {
-        console.error(`FileReader error for ${key}:`, error);
-        alert(`Failed to read ${file.name}`);
-      };
-      reader.readAsBinaryString(file);
+  // --- HELPER: Read Files ---
+  const readFiles = async (fileList) => {
+    const fileData = {};
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      const data = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const wb = XLSX.read(e.target.result, { type: "binary" });
+          resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+        };
+        reader.readAsBinaryString(file);
+      });
+      
+      const name = file.name.toLowerCase();
+      if (name.includes("employee")) fileData.employee = { data, filename: file.name };
+      else if (name.includes("attendance")) fileData.attendance = { data, filename: file.name };
+      else if (name.includes("salary")) fileData.salary = { data, filename: file.name };
+      else if (name.includes("transaction")) fileData.transactions = { data, filename: file.name };
+      else if (name.includes("master")) fileData.master = { data, filename: file.name };
+      else if (name.includes("user_access")) fileData.userAccess = { data, filename: file.name };
+      else if (name.includes("access_matrix")) fileData.accessMatrix = { data, filename: file.name };
+      else if (name.includes("exception")) fileData.exceptions = { data, filename: file.name };
     }
+    return fileData;
   };
 
   const downloadExcel = (data, filename) => {
@@ -76,223 +63,171 @@ const loadWasm = async () => {
     XLSX.writeFile(wb, filename);
   };
 
-  const processPayroll = () => {
-    if (!wasmModule || !files.employee || !files.attendance || !files.salary) {
-      alert("Please upload all 3 files");
-      return;
-    }
-    setLoading(true);
+  // --- HANDLERS ---
+  const handlePayrollProcessing = async () => {
+    if (!payrollFiles || payrollFiles.length < 3) return alert("Please upload all 3 payroll files.");
+    setProcessing('payroll');
     try {
-      const result = wasmModule.processPayroll(
-        files.employee,
-        files.attendance,
-        files.salary,
-      );
-      const data = [];
-      console.log("result:", result);
-      console.log("type:", typeof result);
-      console.log("isArray:", Array.isArray(result));
-      for (let i = 0; i < result.length; i++) {
-        data.push({
-          Employee_ID: result[i].Employee_ID,
-          Name: result[i].Name,
-          Basic_Salary: result[i].Basic_Salary,
-          Allowance: result[i].Allowance,
-          Days_Present: result[i].Days_Present,
-          Gross_Salary: result[i].Gross_Salary,
-          Final_Salary: result[i].Final_Salary,
-        });
-      }
+      const files = await readFiles(payrollFiles);
+      const result = wasmModule.processPayroll(files.employee, files.attendance, files.salary);
+      const data = result.map(r => ({
+           Employee_ID: r.Employee_ID, Name: r.Name,
+           Basic_Salary: r.Basic_Salary, Allowance: r.Allowance,
+           Days_Present: r.Days_Present, Gross_Salary: r.Gross_Salary,
+           Final_Salary: r.Final_Salary
+      }));
       downloadExcel(data, "Final_Payroll_Report.xlsx");
-      setResult({ type: "payroll", data });
-    } catch (error) {
-      console.error("Payroll processing failed:", error);
-    }
-    setLoading(false);
+    } catch (e) { console.error(e); alert("Error processing payroll"); }
+    setProcessing(null);
   };
 
-  const analyzeRisk = () => {
-    if (!wasmModule || !files.transactions || !files.master) {
-      alert("Please upload both files");
-      return;
-    }
-    setLoading(true);
+  const handleRiskAnalysis = async () => {
+    if (!riskFiles || riskFiles.length < 2) return alert("Please upload both risk files.");
+    setProcessing('risk');
     try {
+      const files = await readFiles(riskFiles);
       const result = wasmModule.analyzeRisk(files.transactions, files.master);
       const cleanData = [];
       const riskSummary = [];
-
-      // FIX: Use .length and [i] instead of .size() and .get(i)
-      for (let i = 0; i < result.cleanData.length; i++) {
-        cleanData.push({
-          Transaction_ID: result.cleanData[i].Transaction_ID,
-          Customer_ID: result.cleanData[i].Customer_ID,
-          Amount: result.cleanData[i].Amount,
-          Risk_Level: result.cleanData[i].Risk_Level,
-        });
-      }
-
-      // FIX: Use .length and [i]
-      for (let i = 0; i < result.riskSummary.length; i++) {
-        riskSummary.push({
-          Risk_Type: result.riskSummary[i].Risk_Type,
-          Count: result.riskSummary[i].Count,
-        });
-      }
-
+      for(let i=0; i<result.cleanData.length; i++) cleanData.push(result.cleanData[i]);
+      for(let i=0; i<result.riskSummary.length; i++) riskSummary.push(result.riskSummary[i]);
       downloadExcel(cleanData, "Cleaned_Transactions.xlsx");
       downloadExcel(riskSummary, "Risk_Summary_Report.xlsx");
-      setResult({ type: "risk", cleanData, riskSummary });
-    } catch (error) {
-      console.error("Risk analysis failed:", error);
-    }
-    setLoading(false);
+    } catch (e) { console.error(e); alert("Error analyzing risk"); }
+    setProcessing(null);
   };
 
-  const checkCompliance = () => {
-    if (
-      !wasmModule ||
-      !files.userAccess ||
-      !files.accessMatrix ||
-      !files.exceptions
-    ) {
-      alert("Please upload all 3 files");
-      return;
-    }
-    setLoading(true);
+  const handleComplianceAutomation = async () => {
+    if (!complianceFiles || complianceFiles.length < 3) return alert("Please upload all 3 compliance files.");
+    setProcessing('compliance');
     try {
-      const result = wasmModule.checkCompliance(
-        files.userAccess,
-        files.accessMatrix,
-        files.exceptions,
-      );
+      const files = await readFiles(complianceFiles);
+      const result = wasmModule.checkCompliance(files.userAccess, files.accessMatrix, files.exceptions);
       const violations = [];
       const summary = [];
-
-      // FIX: Use .length and [i]
-      for (let i = 0; i < result.violations.length; i++) {
-        violations.push({
-          User_ID: result.violations[i].User_ID,
-          Role: result.violations[i].Role,
-          Access_Type: result.violations[i].Access_Type,
-          Status: result.violations[i].Status,
-        });
-      }
-
-      // FIX: Use .length and [i]
-      for (let i = 0; i < result.summary.length; i++) {
-        summary.push({
-          Status: result.summary[i].Status,
-          Count: result.summary[i].Count,
-        });
-      }
-
+      for(let i=0; i<result.violations.length; i++) violations.push(result.violations[i]);
+      for(let i=0; i<result.summary.length; i++) summary.push(result.summary[i]);
       downloadExcel(violations, "Violation_Report.xlsx");
       downloadExcel(summary, "Compliance_Summary.xlsx");
-      setResult({ type: "compliance", violations, summary });
-    } catch (error) {
-      console.error("Compliance check failed:", error);
-    }
-    setLoading(false);
+    } catch (e) { console.error(e); alert("Error checking compliance"); }
+    setProcessing(null);
   };
+
+  const DotMatrix = () => (
+    <div className="dot-matrix">
+      {Array.from({ length: 200 }).map((_, i) => <Circle key={i} className="dot" />)}
+    </div>
+  );
 
   return (
     <div className="app">
-      <h1>Excel Processing System</h1>
-
-      <div className="buttons">
-        <div className="button-section">
-          <h2>🔵 Button A - Payroll Processing</h2>
-          <div className="file-inputs">
-            <div>
-              <input
-                type="file"
-                accept=".xlsx"
-                onChange={(e) => handleFileUpload(e, "employee")}
-              />
-              <label>Employee_Master.xlsx {files.employee && "✓"}</label>
-            </div>
-            <div>
-              <input
-                type="file"
-                accept=".xlsx"
-                onChange={(e) => handleFileUpload(e, "attendance")}
-              />
-              <label>Attendance.xlsx {files.attendance && "✓"}</label>
-            </div>
-            <div>
-              <input
-                type="file"
-                accept=".xlsx"
-                onChange={(e) => handleFileUpload(e, "salary")}
-              />
-              <label>Salary_Structure.xlsx {files.salary && "✓"}</label>
-            </div>
-          </div>
-          <button onClick={processPayroll} disabled={loading}>
-            Process Payroll
-          </button>
+      <DotMatrix />
+      
+      <div className="header">
+        <div className="badge">
+          <div className="badge-dot"></div>
+          <span>Enterprise Solutions</span>
         </div>
-
-        <div className="button-section">
-          <h2>🟠 Button B - Data Quality & Risk Analysis</h2>
-          <div className="file-inputs">
-            <input
-              type="file"
-              accept=".xlsx"
-              onChange={(e) => handleFileUpload(e, "transactions")}
-            />
-            <label>Transactions.xlsx</label>
-            <input
-              type="file"
-              accept=".xlsx"
-              onChange={(e) => handleFileUpload(e, "master")}
-            />
-            <label>Master_Data.xlsx</label>
-          </div>
-          <button onClick={analyzeRisk} disabled={loading}>
-            Analyze Risk
-          </button>
-        </div>
-
-        <div className="button-section">
-          <h2>🔴 Button C - Compliance Automation</h2>
-          <div className="file-inputs">
-            <input
-              type="file"
-              accept=".xlsx"
-              onChange={(e) => handleFileUpload(e, "userAccess")}
-            />
-            <label>User_Access.xlsx</label>
-            <input
-              type="file"
-              accept=".xlsx"
-              onChange={(e) => handleFileUpload(e, "accessMatrix")}
-            />
-            <label>Access_Matrix.xlsx</label>
-            <input
-              type="file"
-              accept=".xlsx"
-              onChange={(e) => handleFileUpload(e, "exceptions")}
-            />
-            <label>Exception_List.xlsx</label>
-          </div>
-          <button onClick={checkCompliance} disabled={loading}>
-            Check Compliance
-          </button>
-        </div>
+        <h1>GridCore.</h1>
+        <p className="subtitle">High-performance C++ WebAssembly Modules</p>
       </div>
 
-      {loading && <div className="loading">Processing...</div>}
-
-      {result && (
-        <div className="result">
-          <h3>Processing Complete</h3>
-          <p>Files have been downloaded automatically.</p>
+      <div className="buttons">
+        
+        {/* --- PAYROLL CARD --- */}
+        <div className="button-section payroll-card">
+          <div className="icon-wrapper">
+            <Calculator className="icon" />
+          </div>
+          <h2>Payroll Processing</h2>
+          <p className="description">
+            Automates salary calculation by merging employee data, attendance records, and salary structures. 
+            Automatically applies deductions for low attendance.
+          </p>
+          
+          <div className="file-inputs">
+            <label className={payrollFiles ? "active" : ""}>
+              <div className="label-content">
+                <span className="file-count">{payrollFiles ? `${payrollFiles.length} files selected` : "Upload Data"}</span>
+                <span className="file-sub">Click to browse</span>
+              </div>
+              <Upload className="upload-icon" />
+              <input type="file" multiple onChange={(e) => setPayrollFiles(e.target.files)} className="hidden" />
+            </label>
+            <div className="examples">
+              <FileSpreadsheet className="ex-icon" />
+              <span>Expected: Employee.xlsx, Salary.xlsx, Attendance.xlsx</span>
+            </div>
+          </div>
+          
+          <button onClick={handlePayrollProcessing} disabled={!payrollFiles || processing}>
+            {processing === 'payroll' ? "Processing..." : "Run Payroll"}
+          </button>
         </div>
-      )}
+
+        {/* --- RISK CARD --- */}
+        <div className="button-section risk-card">
+          <div className="icon-wrapper">
+            <Shield className="icon" />
+          </div>
+          <h2>Risk Analysis</h2>
+          <p className="description">
+             Detects fraud by analyzing transaction patterns. Flags high-value transfers (&gt;100k), 
+             identifies missing customer IDs, and removes duplicate entries.
+          </p>
+          
+          <div className="file-inputs">
+            <label className={riskFiles ? "active" : ""}>
+               <div className="label-content">
+                <span className="file-count">{riskFiles ? `${riskFiles.length} files selected` : "Upload Data"}</span>
+                <span className="file-sub">Click to browse</span>
+              </div>
+              <Upload className="upload-icon" />
+              <input type="file" multiple onChange={(e) => setRiskFiles(e.target.files)} className="hidden" />
+            </label>
+             <div className="examples">
+              <FileSpreadsheet className="ex-icon" />
+              <span>Expected: Transactions.xlsx, Master_Data.xlsx</span>
+            </div>
+          </div>
+          
+          <button onClick={handleRiskAnalysis} disabled={!riskFiles || processing}>
+            {processing === 'risk' ? "Analyzing..." : "Analyze Risk"}
+          </button>
+        </div>
+
+        {/* --- COMPLIANCE CARD --- */}
+        <div className="button-section compliance-card">
+          <div className="icon-wrapper">
+            <CheckCircle2 className="icon" />
+          </div>
+          <h2>Compliance Check</h2>
+          <p className="description">
+             Audits user permissions against an Access Matrix. Detects unauthorized roles and excess privileges
+             while accounting for special exceptions.
+          </p>
+          
+          <div className="file-inputs">
+            <label className={complianceFiles ? "active" : ""}>
+               <div className="label-content">
+                <span className="file-count">{complianceFiles ? `${complianceFiles.length} files selected` : "Upload Data"}</span>
+                <span className="file-sub">Click to browse</span>
+              </div>
+              <Upload className="upload-icon" />
+              <input type="file" multiple onChange={(e) => setComplianceFiles(e.target.files)} className="hidden" />
+            </label>
+             <div className="examples">
+              <FileSpreadsheet className="ex-icon" />
+              <span>Expected: User_Access.xlsx, Matrix.xlsx, Exceptions.xlsx</span>
+            </div>
+          </div>
+          
+          <button onClick={handleComplianceAutomation} disabled={!complianceFiles || processing}>
+            {processing === 'compliance' ? "Verifying..." : "Verify Compliance"}
+          </button>
+        </div>
+
+      </div>
     </div>
   );
 }
-
-export default App;
