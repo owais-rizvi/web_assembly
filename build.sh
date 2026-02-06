@@ -1,0 +1,8 @@
+#!/bin/bash
+emcc src/excel_processor.cpp -o frontend/public/excel_processor.js \
+  -s WASM=1 \
+  -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]' \
+  -s ALLOW_MEMORY_GROWTH=1 \
+  -s MODULARIZE=1 \
+  -s EXPORT_NAME="ExcelProcessor" \
+  --bind
