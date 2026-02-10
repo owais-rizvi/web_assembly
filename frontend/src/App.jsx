@@ -29,17 +29,30 @@ export default function App() {
     return () => { if (document.head.contains(script)) document.head.removeChild(script); };
   }, []);
 
-  // --- HELPER: Read Files ---
+  // Helper: Read Excel Files (Fixed with Error Handling)
   const readFiles = async (fileList) => {
     const fileData = {};
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
-      const data = await new Promise((resolve) => {
+      const data = await new Promise((resolve, reject) => { // <--- Added reject
         const reader = new FileReader();
+        
+        // 1. Success Handler
         reader.onload = (e) => {
-          const wb = XLSX.read(e.target.result, { type: "binary" });
-          resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+          try {
+            const wb = XLSX.read(e.target.result, { type: "binary" });
+            resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+          } catch (error) {
+            reject("Error parsing Excel: " + error.message);
+          }
         };
+
+        // 2. Error Handler (THIS WAS MISSING)
+        reader.onerror = (error) => {
+            console.error("File reading failed:", error);
+            reject("Failed to read file. Is it open in Excel?");
+        };
+
         reader.readAsBinaryString(file);
       });
       
